@@ -1,29 +1,30 @@
 
-.PHONY: build the markdown-studio binary
+.PHONY: build rebuild security test clean
+
+configure:
+	sudo dnf install libXxf86vm-devel -y
+	go mod tidy
+	go install github.com/securego/gosec/v2/cmd/gosec@latest
+
 build:
+	go fmt ./...
 	go build -o build/markdown-studio ./cmd/markdown-studio
 
-
-.PHONY: rebuild everything including downloaded dependencies and be verbose
 rebuild: clean
+	go clean -modcache
+	go mod tidy
 	go build -v -a -o build/markdown-studio ./cmd/markdown-studio
 
-
-.PHONY: security check for security issues
 security:
 	@if command -v gosec >/dev/null 2>&1; then \
-		gosec ./...  \
+		gosec ./... ; \
 	else \
 		echo "gosec not installed. Skipping security check." ; \
-	fi    
+	fi
 
-
-.PHONY: build rebuild
 test: security
 	go test ./...
-	
 
-.PHONY: build rebuild test clean
 clean:
 	rm -rf build
 	mkdir -p build
