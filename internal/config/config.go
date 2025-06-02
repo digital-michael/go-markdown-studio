@@ -11,21 +11,58 @@ type DirectoryEntry struct {
 	Recursive bool   `json:"recursive"`
 }
 
+type ToolbarConfig struct {
+	Name        string   `json:"name"`
+	Orientation string   `json:"orientation"` // "horizontal" or "vertical"
+	Actions     []string `json:"actions"`
+}
+
 type AppConfig struct {
 	Theme       string           `json:"theme"`
 	Directories []DirectoryEntry `json:"directories"`
+	Toolbars    []ToolbarConfig  `json:"toolbars"`
 }
 
 const configFile = "config.json"
 
-func LoadConfig() AppConfig {
-	cfg := AppConfig{
-		Theme:       "system",
-		Directories: []DirectoryEntry{},
+func defaultConfig() AppConfig {
+	return AppConfig{
+		Theme: "system",
+		Directories: []DirectoryEntry{
+			{
+				Path:      ".",
+				Recursive: false,
+			},
+		},
+		Toolbars: []ToolbarConfig{
+			{
+				Name:        "editorMain",
+				Orientation: "horizontal",
+				Actions: []string{
+					"newfile",
+					"separator",
+					"save",
+					"copy",
+					"cut",
+					"paste",
+					"separator",
+					"undo",
+					"redo",
+					"separator",
+					"deletefile",
+					"movefile",
+				},
+			},
+		},
 	}
+}
+
+func LoadConfig() AppConfig {
+	cfg := defaultConfig()
 	file, err := os.Open(configFile)
 	if err != nil {
-		log.Println("No config file found, using default.")
+		log.Println("No config file found, creating default config.")
+		SaveConfig(cfg)
 		return cfg
 	}
 	defer file.Close()
@@ -33,7 +70,9 @@ func LoadConfig() AppConfig {
 	decoder := json.NewDecoder(file)
 	err = decoder.Decode(&cfg)
 	if err != nil {
-		log.Println("Error decoding config file:", err)
+		log.Println("Error decoding config file, using default:", err)
+		cfg = defaultConfig()
+		SaveConfig(cfg)
 		return cfg
 	}
 

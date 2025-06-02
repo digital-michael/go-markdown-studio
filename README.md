@@ -1,5 +1,5 @@
-
-# Go M5arkdown Studio
+ 
+# Go Markdown Studio
 
 A simple Markdown editor with a live preview, written in Go using the Fyne toolkit.
 

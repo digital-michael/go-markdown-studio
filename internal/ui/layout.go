@@ -10,6 +10,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	"go-markdown-studio/internal/config"
+	"go-markdown-studio/internal/ui/actions"
 )
 
 // BuildMainUI constructs the main UI layout using Editor and FileList components.
@@ -17,8 +18,11 @@ func BuildMainUI(a fyne.App, w fyne.Window, cfg *config.AppConfig) fyne.CanvasOb
 	// Ensure config directories are not empty
 	ensureConfigDirectories(cfg)
 
+	// Create the event bus
+	eventBus := actions.NewSimpleEventBus()
+
 	// Markdown editor
-	editor := NewEditor()
+	editor := NewEditor(cfg, eventBus)
 
 	// File list
 	fileList := NewFileList(cfg)
@@ -26,7 +30,6 @@ func BuildMainUI(a fyne.App, w fyne.Window, cfg *config.AppConfig) fyne.CanvasOb
 	selectedPathLabel := widget.NewLabel("")
 	selectedPathLabel.Wrapping = fyne.TextWrapBreak
 
-	// add selectors
 	// Handle file selection: load file into editor and update label
 	fileList.OnSelected(func(i int) {
 		if i >= 0 && i < len(fileList.MDFiles) {
@@ -41,29 +44,50 @@ func BuildMainUI(a fyne.App, w fyne.Window, cfg *config.AppConfig) fyne.CanvasOb
 		}
 	})
 
-	// handle the event handlers
-	addEventHandlers(a, w, *editor, *fileList, cfg)
+	// ...existing eventBus.Subscribe handlers...
 
-	// Layout
-	leftPanel := container.NewStack(fileList.Widget())
-	rightPanel := container.NewBorder(nil, editor.SaveButton, nil, nil, editor.Widget)
-	split := container.NewHSplit(leftPanel, rightPanel)
-	split.Offset = 0.25
+	eventBus.Subscribe("app.newfile", func(_ any) {
+		// TODO: Implement new file logic (e.g., show dialog, create file, refresh list)
+		log.Println("New file requested")
+	})
 
-	main := container.NewBorder(nil, selectedPathLabel, nil, nil, split)
-	return main
-}
+	eventBus.Subscribe("app.deletefile", func(_ any) {
+		// TODO: Implement delete file logic (e.g., confirm, delete, refresh list)
+		log.Println("Delete file requested")
+	})
 
-func addEventHandlers(a fyne.App, w fyne.Window, editor Editor, fileList FileList, cfg *config.AppConfig) {
-	// Add any additional event handlers here if needed
-	// For example, you could handle window close events or other actions
-	// w.SetCloseIntercept(func() {
-	// 	log.Println("Window close intercepted. You can add cleanup code here.")
-	// 	// Optionally save state or perform cleanup
-	// })
+	eventBus.Subscribe("app.movefile", func(_ any) {
+		// TODO: Implement move file logic (e.g., show dialog, move, refresh list)
+		log.Println("Move file requested")
+	})
 
+	eventBus.Subscribe("editor.undo", func(_ any) {
+		// TODO: Implement undo logic (requires undo stack in editor)
+		log.Println("Undo requested")
+	})
+
+	eventBus.Subscribe("editor.redo", func(_ any) {
+		// TODO: Implement redo logic (requires redo stack in editor)
+		log.Println("Redo requested")
+	})
+
+	// Wire up event bus handlers for editor actions
+	eventBus.Subscribe("editor.save", func(_ any) {
+		editor.Save()
+	})
+	eventBus.Subscribe("editor.copy", func(_ any) {
+		editor.Widget.TypedShortcut(&fyne.ShortcutCopy{Clipboard: fyne.CurrentApp().Driver().AllWindows()[0].Clipboard()})
+	})
+	eventBus.Subscribe("editor.cut", func(_ any) {
+		editor.Widget.TypedShortcut(&fyne.ShortcutCut{Clipboard: fyne.CurrentApp().Driver().AllWindows()[0].Clipboard()})
+	})
+	eventBus.Subscribe("editor.paste", func(_ any) {
+		editor.Widget.TypedShortcut(&fyne.ShortcutPaste{Clipboard: fyne.CurrentApp().Driver().AllWindows()[0].Clipboard()})
+	})
+	// Add more event handlers for newfile, deletefile, movefile, undo, redo as needed
+
+	// Directory/file watcher logic
 	updateChan := make(chan string)
-
 	cwd, err := os.Getwd()
 	if err != nil {
 		log.Println("Could not get working directory:", err)
@@ -85,6 +109,15 @@ func addEventHandlers(a fyne.App, w fyne.Window, editor Editor, fileList FileLis
 		log.Printf("Directory change detected, updating file list...%s\n", cwd)
 		fyne.Do(func() { updateChan <- cwd })
 	})
+
+	// Layout
+	leftPanel := container.NewStack(fileList.Widget())
+	rightPanel := container.NewBorder(editor.Toolbar.Widget(), nil, nil, nil, editor.Widget)
+	split := container.NewHSplit(leftPanel, rightPanel)
+	split.Offset = 0.25
+
+	main := container.NewBorder(nil, selectedPathLabel, nil, nil, split)
+	return main
 }
 
 // ensureConfigDirectories guarantees at least one directory is present in config.

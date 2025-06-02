@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"go-markdown-studio/internal/config"
+	"go-markdown-studio/internal/ui/actions"
 	"log"
 	"os"
 
@@ -10,23 +12,27 @@ import (
 // Editor encapsulates the markdown editor widget and its state.
 type Editor struct {
 	Widget          *widget.Entry
-	SaveButton      *widget.Button
+	Toolbar         *Toolbar
 	CurrentFilePath string
 	OriginalContent string
 	IsDirty         bool
+	EventBus        actions.EventBus
 }
 
 // NewEditor creates and returns a new Editor struct.
-func NewEditor() *Editor {
-	editor := &Editor{}
+func NewEditor(cfg *config.AppConfig, eventBus actions.EventBus) *Editor {
+	editor := &Editor{
+		EventBus: eventBus,
+	}
 
 	editor.Widget = widget.NewMultiLineEntry()
 	editor.Widget.SetPlaceHolder("Select a markdown file to edit...")
 
-	editor.SaveButton = widget.NewButton("💾 Save", func() {
-		editor.Save()
-	})
-	editor.SaveButton.Disable() // start disabled
+	// Example: use toolbar named "editorMain"
+	ctx := actions.ActionContext{
+		EventBus: eventBus,
+	}
+	editor.Toolbar = NewToolbar("editorMain", cfg, ctx)
 
 	editor.Widget.OnChanged = func(content string) {
 		editor.OnContentChanged(content)
@@ -45,7 +51,7 @@ func (e *Editor) Save() {
 			log.Printf("Saved: %s", e.CurrentFilePath)
 			e.OriginalContent = e.Widget.Text
 			e.IsDirty = false
-			e.SaveButton.Disable()
+			e.UpdateToolbarState()
 		}
 	}
 }
@@ -54,11 +60,10 @@ func (e *Editor) Save() {
 func (e *Editor) OnContentChanged(content string) {
 	if content != e.OriginalContent {
 		e.IsDirty = true
-		e.SaveButton.Enable()
 	} else {
 		e.IsDirty = false
-		e.SaveButton.Disable()
 	}
+	e.UpdateToolbarState()
 }
 
 // SetFile loads a file into the editor and updates state.
@@ -67,5 +72,17 @@ func (e *Editor) SetFile(path string, content string) {
 	e.OriginalContent = content
 	e.Widget.SetText(content)
 	e.IsDirty = false
-	e.SaveButton.Disable()
+	e.UpdateToolbarState()
+}
+
+// Call this when editor state changes
+func (e *Editor) UpdateToolbarState() {
+	state := actions.EditorState{
+		CurrentFilePath: e.CurrentFilePath,
+		IsDirty:         e.IsDirty,
+		HasSelection:    false, // Fyne Entry does not support selection info directly
+	}
+	if e.Toolbar != nil {
+		e.Toolbar.UpdateState(state)
+	}
 }

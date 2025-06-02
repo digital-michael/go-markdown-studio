@@ -21,6 +21,18 @@
 - aphabetize list
 - add .MD (and keep .md) to file filter
 - add .TXT and .txt
+- add customer file extensions
 - convert to a tree view?
 - handle/test multiple roots
 - obey recursive switch for subdirectory watches
+
+
+# RAG AI
+- as a component, integrate ollama and /model selections
+  * summarization
+  * clean up suggestions
+  * by selection of by file
+- generative assistance 
+  * to AI console
+  * save to notes file
+  * quick compile and feedback loop into AI console
